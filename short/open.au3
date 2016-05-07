@@ -1,4 +1,4 @@
-; #include <Array.au3>
+#include <Array.au3>
 
 ;;; This Au3 script need 3 param:
 
@@ -9,21 +9,30 @@
 
 Local $title
 Local $prev = "[REGEXPTITLE:^运行$]"
+Local $args = $CmdLine
+Local $argsLen = $args[0]
 
 While BitAND(2, WinGetState ($prev) )
    WinClose($prev)
 WEnd
 
-If $CmdLine[0]<3 Then Exit
+If $argsLen<3 Then Exit
+
+If $argsLen==3 Then _ArrayInsert($args, 2, "")
+
+; MsgBox(0, _ArrayPop($args), _ArrayToString($args))
+
+Local $keyword = _Arraypop($args)
+Local $method = _Arraypop($args)
 
 ; MsgBox(0, "", WinGetState ("[REGEXPTITLE:^运行$]") )
 
-If $CmdLine[2]="title" Then
-   $title = ('[REGEXPTITLE:' & $CmdLine[3] & ']')
+If $method="title" Then
+   $title = ('[REGEXPTITLE:' & $keyword & ']')
 EndIf
 
-If $CmdLine[2]="class" Then
-   $title = ('[CLASS:' & $CmdLine[3] & ']')
+If $method="class" Then
+   $title = ('[CLASS:' & $keyword & ']')
 EndIf
 
 ; MsgBox(0, $title, BitAND(2, WinGetState ($title) ) )
@@ -34,7 +43,7 @@ if BitAND(2, WinGetState ($title) ) Then
 
 Else
 
-   ShellExecute ($CmdLine[1])
+   ShellExecute ($args[1], $args[2])
 
 EndIf
 
