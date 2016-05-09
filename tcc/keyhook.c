@@ -28,6 +28,7 @@ void SetKeyboardHook(int, HOOKPROC, HINSTANCE, DWORD);
 
 
 HHOOK hhkKeyboard;
+long commandMode = 0;
 long prevTime = 0;
 long timeDiff = 9999;
 
@@ -118,13 +119,31 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 #endif
             }
 
+            if(commandMode){
+              if( p->vkCode == VK_ESCAPE ||
+                  p->vkCode == VK_RETURN ||
+                  p->vkCode == VK_SPACE
+                  ){
+                commandMode = 0;
+              }
+              if( p->vkCode == VK_SPACE ){
+                // ENTER key down
+                keybd_event(VK_RETURN, 0x9C, 0, 0);
+                // ENTER key up
+                keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0);
+              }
+            }
+
 
             break;
           }
         }
     }
 
-  if(bKeyHooked) ShellExecuteA( NULL, "open", "C:\\WINDOWS\\system32\\rundll32.exe", "shell32.dll,#61", NULL, SW_SHOWNORMAL );
+  if(bKeyHooked){
+    ShellExecuteA( NULL, "open", "C:\\WINDOWS\\system32\\rundll32.exe", "shell32.dll,#61", NULL, SW_SHOWNORMAL );
+    commandMode = 1;
+  }
 
 
   return (bKeyHooked ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
