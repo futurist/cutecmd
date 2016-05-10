@@ -1,4 +1,5 @@
 #include <windows.h>
+/* #define _DEBUG */
 
 #ifdef _DEBUG
 #include <stdio.h>
@@ -120,9 +121,11 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             }
 
             if(commandMode){
+              int CtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
               if( p->vkCode == VK_ESCAPE ||
                   p->vkCode == VK_RETURN ||
-                  p->vkCode == VK_SPACE
+                  p->vkCode == VK_SPACE ||
+                  CtrlG
                   ){
                 commandMode = 0;
               }
@@ -131,6 +134,12 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                 keybd_event(VK_RETURN, 0x9C, 0, 0);
                 // ENTER key up
                 keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0);
+              }
+              if( 0 ){
+                // ENTER key down
+                keybd_event(VK_ESCAPE, 0x9C, 0, 0);
+                // ENTER key up
+                keybd_event(VK_ESCAPE, 0x9C, KEYEVENTF_KEYUP, 0);
               }
             }
 
