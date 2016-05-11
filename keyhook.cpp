@@ -29,9 +29,10 @@ void SetKeyboardHook(int, HOOKPROC, HINSTANCE, DWORD);
 
 
 HHOOK hhkKeyboard;
-long commandMode = 0;
-long prevTime = 0;
-long timeDiff = 9999;
+LONG commandMode = 0;
+LONG prevTime = 0;
+LONG timeDiff = 9999;
+BOOL bCtrlG = FALSE;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -46,6 +47,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     {
       TranslateMessage(&Msg);
       DispatchMessage(&Msg);
+
     }
 
 
@@ -75,96 +77,75 @@ void SetKeyboardHook(int idHook, HOOKPROC  lpfn, HINSTANCE hMod, DWORD dwThreadI
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
   BOOL bKeyHooked = FALSE;
-  BOOL bControlHooked = FALSE;
   BOOL bControl = FALSE;
+  BOOL isDown = FALSE;
+  BOOL isUp = FALSE;
+  BOOL retVal;
 
   if (nCode == HC_ACTION)
     {
       PKBDLLHOOKSTRUCT p = (PKBDLLHOOKSTRUCT)lParam;
 
-      switch (wParam)
-        {
-        case WM_KEYDOWN:
-          /* case WM_KEYUP: */
-        case WM_SYSKEYDOWN:
-          /* case WM_SYSKEYUP: */
-          {
-            //bKeyHooked = (p->vkCode == VK_RETURN);
-            //winexec("c:\\windows\\notepad.exe");
+      isDown = wParam==WM_KEYDOWN || wParam==WM_SYSKEYDOWN;
+      isUp = wParam==WM_KEYUP || wParam==WM_SYSKEYUP;
 
+      if (isDown) {
 
-            //bKeyHooked = (( p->vkCode == VK_SPACE ) &&
-            //                        (( p->flags & LLKHF_ALTDOWN ) != 0 )) ||
-            //                        (( p->vkCode == VK_ESCAPE ) &&
-            //                        (( p->flags & LLKHF_ALTDOWN ) != 0 )) ||
-            //                        (( p->vkCode == VK_ESCAPE ) &&
-            //                        (( GetKeyState( VK_CONTROL ) & 0x8000) != 0 ));
+        //** key is ctrl+shift+SPC
+        bKeyHooked = (( p->vkCode == VK_SPACE ) &&
+                      (( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ) &&
+                      ((GetKeyState( VK_LSHIFT ) & 0x8000) != 0)
+                      );
 
-
-
-            //** key is ctrl+shift+SPC
-
-            bKeyHooked = (( p->vkCode == VK_SPACE ) &&
-                          (( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ) &&
-                          ((GetKeyState( VK_LSHIFT ) & 0x8000) != 0)
-                          );
-
-
-            //** key is ctrl+ctrl within 500ms
-
-            //bKeyHooked = (p->vkCode==VK_LCONTROL || p->vkCode==VK_RCONTROL);
-
-            if(commandMode){
-              prevTime = 0;
-              int CtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
-              if( p->vkCode == VK_ESCAPE ||
-                  p->vkCode == VK_RETURN ||
-                  p->vkCode == VK_SPACE ||
-                  CtrlG
-                  ){
-                commandMode = 0;
-              }
-              if( p->vkCode == VK_SPACE ){
-                // ENTER key down
-                keybd_event(VK_RETURN, 0x9C, 0, 0);
-                // ENTER key up
-                keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0);
-              }
-              if( 0 ){
-                // ENTER key down
-                keybd_event(VK_ESCAPE, 0x9C, 0, 0);
-                // ENTER key up
-                keybd_event(VK_ESCAPE, 0x9C, KEYEVENTF_KEYUP, 0);
-              }
-            }
-
-
-            break;
+        if(commandMode){
+          prevTime = 0;
+          if( p->vkCode == VK_ESCAPE ||
+              p->vkCode == VK_RETURN ||
+              p->vkCode == VK_SPACE
+              ){
+            commandMode = 0;
+          }
+          if( p->vkCode == VK_SPACE ){
+            // ENTER key down
+            keybd_event(VK_RETURN, 0x9C, 0, 0);
+            // ENTER key up
+            keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0);
           }
         }
+      }
 
+      if( !bCtrlG && isUp) {
+        bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
+		 _trace( L"ctrl g is %d\n",  bCtrlG );
+		 PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0);
+      }
 
+      //** key is ctrl+ctrl within 500 ms
       bControl = (p->vkCode == VK_LCONTROL);
       if( bControl ){
-        if(wParam==WM_KEYUP||wParam==WM_SYSKEYUP){
-          timeDiff = GetTickCount() - prevTime;
-          prevTime = GetTickCount();
+
+        if(isUp) {
+
+            timeDiff = GetTickCount() - prevTime;
+            prevTime = GetTickCount();
 #ifdef _DEBUG
-          _trace( L"timeDiff is %d\n",  timeDiff );
+            _trace( L"timeDiff is %d\n",  timeDiff );
 #endif
+            bKeyHooked = timeDiff<500;
         }
       } else {
         prevTime = 0;
       }
-
     }
 
-  if(bKeyHooked || timeDiff<500){
+  retVal = ( (bKeyHooked && !bControl && !bCtrlG) ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
+
+  if(bKeyHooked){
     ShellExecuteA( NULL, "open", "C:\\WINDOWS\\system32\\rundll32.exe", "shell32.dll,#61", NULL, SW_SHOWNORMAL );
     commandMode = 1;
   }
 
-  return ( (bKeyHooked && !bControl) ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
+  return retVal;
 }
 
 
