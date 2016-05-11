@@ -112,15 +112,19 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
             //bKeyHooked = (p->vkCode==VK_LCONTROL || p->vkCode==VK_RCONTROL);
 
-            if( bKeyHooked){
+            if( (p->vkCode == VK_LCONTROL) ){
               timeDiff = GetTickCount() - prevTime;
               prevTime = GetTickCount();
 #ifdef _DEBUG
               _trace( L"timeDiff is %d\n",  timeDiff );
 #endif
+              bKeyHooked = timeDiff<500?1:0;
+            } else {
+              prevTime = 0;
             }
 
             if(commandMode){
+              prevTime = 0;
               int CtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
               if( p->vkCode == VK_ESCAPE ||
                   p->vkCode == VK_RETURN ||
