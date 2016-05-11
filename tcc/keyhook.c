@@ -29,9 +29,9 @@ void SetKeyboardHook(int, HOOKPROC, HINSTANCE, DWORD);
 
 
 HHOOK hhkKeyboard;
-long commandMode = 0;
-long prevTime = 0;
-long timeDiff = 9999;
+LONG commandMode = 0;
+LONG prevTime = 0;
+LONG timeDiff = 9999;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -75,6 +75,8 @@ void SetKeyboardHook(int idHook, HOOKPROC  lpfn, HINSTANCE hMod, DWORD dwThreadI
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
   BOOL bKeyHooked = FALSE;
+  BOOL bControl = FALSE;
+  BOOL retVal;
 
   if (nCode == HC_ACTION)
     {
@@ -83,9 +85,9 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
       switch (wParam)
         {
         case WM_KEYDOWN:
-          //case WM_KEYUP:
+          /* case WM_KEYUP: */
         case WM_SYSKEYDOWN:
-          //case WM_SYSKEYUP:
+          /* case WM_SYSKEYUP: */
           {
             //bKeyHooked = (p->vkCode == VK_RETURN);
             //winexec("c:\\windows\\notepad.exe");
@@ -111,17 +113,6 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             //** key is ctrl+ctrl within 500ms
 
             //bKeyHooked = (p->vkCode==VK_LCONTROL || p->vkCode==VK_RCONTROL);
-
-            if( (p->vkCode == VK_LCONTROL) ){
-              timeDiff = GetTickCount() - prevTime;
-              prevTime = GetTickCount();
-#ifdef _DEBUG
-              _trace( L"timeDiff is %d\n",  timeDiff );
-#endif
-              bKeyHooked = timeDiff<500?1:0;
-            } else {
-              prevTime = 0;
-            }
 
             if(commandMode){
               prevTime = 0;
@@ -151,15 +142,32 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             break;
           }
         }
+
+
+      bControl = (p->vkCode == VK_LCONTROL);
+      if( bControl ){
+        if(wParam==WM_KEYUP||wParam==WM_SYSKEYUP){
+          timeDiff = GetTickCount() - prevTime;
+          prevTime = GetTickCount();
+#ifdef _DEBUG
+          _trace( L"timeDiff is %d\n",  timeDiff );
+#endif
+          bKeyHooked = timeDiff<500;
+        }
+      } else {
+        prevTime = 0;
+      }
+
     }
+
+  retVal = ( (bKeyHooked && !bControl) ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
 
   if(bKeyHooked){
     ShellExecuteA( NULL, "open", "C:\\WINDOWS\\system32\\rundll32.exe", "shell32.dll,#61", NULL, SW_SHOWNORMAL );
     commandMode = 1;
   }
 
-
-  return (bKeyHooked ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
+  return retVal;
 }
 
 
