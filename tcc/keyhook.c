@@ -92,7 +92,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
       if (isDown) {
 
         //** key is ctrl+shift+SPC
-        bKeyHooked = (( p->vkCode == VK_SPACE ) &&
+        bKeyHooked = 0&& (( p->vkCode == VK_SPACE ) &&
                       (( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ) &&
                       ((GetKeyState( VK_LSHIFT ) & 0x8000) != 0)
                       );
@@ -111,15 +111,14 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             // ENTER key up
             keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0);
           }
-        }
-      }
 
-      if( commandMode && isDown ) {
-        bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
-        if(bCtrlG){
-          prevTime = 0;
-          commandMode = FALSE;
-          PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0);
+          bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
+          if(bCtrlG){
+            prevTime = 0;
+            commandMode = FALSE;
+            PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0);
+          }
+
         }
       }
 
