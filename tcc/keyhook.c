@@ -106,6 +106,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             commandMode = 0;
           }
           if( p->vkCode == VK_SPACE ){
+            /* SetForegroundWindow((HWND)FindWindow(NULL, L"运行")); */
             // ENTER key down
             keybd_event(VK_RETURN, 0x9C, 0, 0);
             // ENTER key up
