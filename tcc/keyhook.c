@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <stdio.h>
 /* #define _DEBUG */
 
 #ifdef _DEBUG
@@ -72,6 +73,35 @@ void SetKeyboardHook(int idHook, HOOKPROC  lpfn, HINSTANCE hMod, DWORD dwThreadI
   // UnhookWindowsHookEx(hhkKeyboard);
 }
 
+void SetForegroundWindowInternal(HWND hWnd)
+{
+    if(!IsWindow(hWnd)) return;
+ 
+    //relation time of SetForegroundWindow lock
+    DWORD lockTimeOut = 0;
+    HWND  hCurrWnd = GetForegroundWindow();
+    DWORD dwThisTID = GetCurrentThreadId(),
+          dwCurrTID = GetWindowThreadProcessId(hCurrWnd,0);
+ 
+    //we need to bypass some limitations from Microsoft :)
+    if(dwThisTID != dwCurrTID)
+    {
+        AttachThreadInput(dwThisTID, dwCurrTID, TRUE);
+ 
+        SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT,0,&lockTimeOut,0);
+        SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,0,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
+ 
+        AllowSetForegroundWindow(ASFW_ANY);
+    }
+ 
+    SetForegroundWindow(hWnd);
+ 
+    if(dwThisTID != dwCurrTID)
+    {
+        SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,(PVOID)lockTimeOut,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
+        AttachThreadInput(dwThisTID, dwCurrTID, FALSE);
+    }
+}
 
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
@@ -106,7 +136,6 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             commandMode = 0;
           }
           if( p->vkCode == VK_SPACE ){
-            /* SetForegroundWindow((HWND)FindWindow(NULL, L"运行")); */
             // ENTER key down
             keybd_event(VK_RETURN, 0x9C, 0, 0);
             // ENTER key up
@@ -145,6 +174,36 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
   if(bKeyHooked){
     ShellExecuteA( NULL, "open", "C:\\WINDOWS\\system32\\rundll32.exe", "shell32.dll,#61", NULL, SW_SHOWNORMAL );
+    /* Sleep(1000); */
+
+  // show msgbox to AllowSetForegroundWindow()
+  HWND  hCurrWnd = GetForegroundWindow();
+  MessageBox(hCurrWnd, NULL, NULL, MB_ICONWARNING );
+
+
+HWND hwnd = FindWindow(NULL, "Everything");
+
+FILE *f = fopen("d:\\hooklog.txt", "w");
+if (f == NULL)
+{
+    printf("Error opening file!\n");
+    exit(1);
+}
+
+/* print some text */
+const char *text = "Test activate window";
+fprintf(f, "Target: %s\n", text);
+
+/* print integers and floats */
+ fprintf(f, "Find Window: %d, %p\n", AllowSetForegroundWindow(GetCurrentProcessId()), GetCurrentProcessId());
+
+fclose(f);
+
+    SetForegroundWindow(hwnd);
+    SetForegroundWindowInternal(hwnd);
+exit(1);
+
+
     commandMode = 1;
   }
 
