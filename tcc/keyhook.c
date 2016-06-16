@@ -113,7 +113,9 @@ HINSTANCE RunCmd(){
   char cmd[1024];
   GetWindowText(hWndEdit, cmd, sizeof(cmd));
   SetWindowText(hWndEdit, "");
-  return ShellExecuteA( NULL, NULL, TrimWhiteSpace(cmd), NULL, NULL, SW_SHOWNORMAL );
+  char *cmd2 = TrimWhiteSpace(cmd);
+  if(strlen(cmd2)==0) return 0;
+  return (HINSTANCE)ShellExecuteA( NULL, NULL, cmd2, NULL, NULL, SW_SHOWNORMAL);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -149,7 +151,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
   if (!(hWnd = CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, windowClass, windowTitle, WS_POPUP,
-                              300, 500, 200, 100, NULL, NULL, hInstance, NULL)))
+                              300, 300, 200, 90, NULL, NULL, hInstance, NULL)))
     {
       MessageBox(NULL, TEXT("CreateWindow Failed!"), TEXT("Error"), MB_ICONERROR);
       return 1;
@@ -172,7 +174,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                  30, hWnd, ID_BUTTON_OK, NULL, NULL);
 
   hWndCancel = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Button"), TEXT("Cancel"),
-                                 WS_CHILD | WS_VISIBLE, 100, 50, 80,
+                                 WS_CHILD | WS_VISIBLE, 110, 50, 80,
                                  30, hWnd, ID_BUTTON_CANCEL, NULL, NULL);
 
   ShowWindow(hWnd, nCmdShow);
@@ -276,9 +278,9 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
         //** key is ctrl+shift+SPC
         bKeyHooked = 0&& (( p->vkCode == VK_SPACE ) &&
-                      (( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ) &&
-                      ((GetKeyState( VK_LSHIFT ) & 0x8000) != 0)
-                      );
+                          (( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ) &&
+                          ((GetKeyState( VK_LSHIFT ) & 0x8000) != 0)
+                          );
 
         if(commandMode){
           prevTime = 0;
@@ -294,11 +296,10 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
           /* } */
 
           bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
-          if(ShellRet>32)  // RunCmd succeed
-          if( p->vkCode == VK_ESCAPE ||
-              p->vkCode == VK_RETURN ||
-              p->vkCode == VK_SPACE ||
-              bCtrlG
+          if( ShellRet> (HINSTANCE) 32 && // RunCmd succeed
+              ( p->vkCode == VK_RETURN ||
+                p->vkCode == VK_SPACE)
+              || p->vkCode == VK_ESCAPE || bCtrlG
               ){
             HideCmd();
             bCmdKey = TRUE;
@@ -313,12 +314,12 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
         if(isUp) {
 
-            timeDiff = GetTickCount() - prevTime;
-            prevTime = GetTickCount();
+          timeDiff = GetTickCount() - prevTime;
+          prevTime = GetTickCount();
 #ifdef _DEBUG
-            _trace( L"timeDiff is %d\n",  timeDiff );
+          _trace( L"timeDiff is %d\n",  timeDiff );
 #endif
-            bKeyHooked = timeDiff<500;
+          bKeyHooked = timeDiff<500;
         }
       } else {
         prevTime = 0;
@@ -327,7 +328,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
   retVal = ( (bKeyHooked && !bControl || bCmdKey) ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
   if(bCmdKey) bCmdKey = FALSE;
-  
+
   if(bKeyHooked){
     ShowCmd();
     commandMode = 1;
