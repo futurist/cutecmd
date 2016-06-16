@@ -19,9 +19,6 @@ bool _trace(TCHAR *format, ...)
 }
 #endif
 
-
-#define GWL_WNDPROC -4
-
 LRESULT CALLBACK LowLevelKeyboardProc(int, WPARAM, LPARAM);
 LRESULT CALLBACK KeyboardProc(int, WPARAM, LPARAM);
 //HINSTANCE ShellExecute( HWND ,  LPCTSTR , LPCTSTR ,  LPCTSTR ,  LPCTSTR , INT  );
@@ -37,18 +34,33 @@ LONG prevTime = 0;
 LONG timeDiff = 9999;
 BOOL bCtrlG = FALSE;
 
-HMENU ID_EDIT1 =  0x8801;
-HMENU ID_BUTTON_OK =  0x8802;
-HMENU ID_BUTTON_CANCEL = 0x8803;
+HMENU ID_EDIT1 =  (HMENU)0x8801;
+HMENU ID_BUTTON_OK = (HMENU)0x8802;
+HMENU ID_BUTTON_CANCEL = (HMENU)0x8803;
 
-HWND hWndEdit = NULL;
-HWND hWndOK = NULL;
-HWND hWndCancel = NULL;
+HWND hWnd;
+HWND hWndEdit;
+HWND hWndOK;
+HWND hWndCancel;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-void RunCmd(char *str){
-  ShellExecuteA( NULL, NULL, str, NULL, NULL, SW_SHOWNORMAL );
+void ShowCmd(){
+  ShowWindow(hWnd, SW_SHOW);
+  SetWindowText(hWndEdit, "");
+}
+void HideCmd(){
+  prevTime = 0;
+  commandMode = 0;
+  ShowWindow(hWnd, SW_HIDE);
+}
+void RunCmd(){
+  commandMode = 0;
+  char cmd[1024];
+  GetWindowText(hWndEdit, cmd, sizeof(cmd));
+  SetWindowText(hWndEdit, "");
+  ShellExecuteA( NULL, NULL, cmd, NULL, NULL, SW_SHOWNORMAL );
+  HideCmd();
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -60,8 +72,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   //SetKeyboardHook(WH_KEYBOARD, KeyboardProc, (HINSTANCE)NULL, GetCurrentThreadId());
 
 
-  LPTSTR windowClass = TEXT("WinApp");
-  LPTSTR windowTitle = TEXT("Windows Application");
+  LPTSTR windowClass = TEXT("KeyHook");
+  LPTSTR windowTitle = TEXT("KeyHook Window");
   WNDCLASSEX wcex;
 
   wcex.cbClsExtra = 0;
@@ -83,11 +95,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
       return 1;
     }
 
-  HWND hWnd;
-
   if (!(hWnd = CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, windowClass, windowTitle, WS_POPUP,
-                              300, 500, 200,
-                              130, NULL, NULL, hInstance, NULL)))
+                              300, 500, 200, 100, NULL, NULL, hInstance, NULL)))
     {
       MessageBox(NULL, TEXT("CreateWindow Failed!"), TEXT("Error"), MB_ICONERROR);
       return 1;
@@ -116,6 +125,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
   SetFocus(hWndEdit);
+  HideCmd();
 
   MSG Msg;
   while(GetMessage(&Msg, NULL, 0, 0) > 0)
@@ -137,20 +147,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   switch (msg)
     {
-    case WM_SETFOCUS: 
+    case WM_KILLFOCUS:
+      HideCmd();
+      return 0;
+    case WM_SETFOCUS:
       SetFocus(hWndEdit);
       return 0;
 
     case WM_COMMAND:
-      if(LOWORD(wParam) == ID_BUTTON_OK) { // HIWORD(wParam) == BN_CLICKED
-        char txt[1024];
-        GetWindowText(hWndEdit, txt, sizeof(txt));
+      if((HMENU)LOWORD(wParam) == (HMENU)ID_BUTTON_OK) { // HIWORD(wParam) == BN_CLICKED
         /* MessageBox (hWnd, "The Enter/Return key was pressed", txt, MB_OK); */
-        RunCmd(txt);
-        PostQuitMessage(0);
+        RunCmd();
       }
-      if(LOWORD(wParam) == ID_BUTTON_CANCEL) {
-        PostQuitMessage(0);
+      if((HMENU)LOWORD(wParam) == (HMENU)ID_BUTTON_CANCEL) {
+        HideCmd();
       }
       return 0;
     case WM_DESTROY:
@@ -185,7 +195,7 @@ void SetForegroundWindowInternal(HWND hWnd)
     HWND  hCurrWnd = GetForegroundWindow();
     DWORD dwThisTID = GetCurrentThreadId(),
           dwCurrTID = GetWindowThreadProcessId(hCurrWnd,0);
- 
+
     //we need to bypass some limitations from Microsoft :)
     if(dwThisTID != dwCurrTID)
     {
@@ -193,12 +203,13 @@ void SetForegroundWindowInternal(HWND hWnd)
 
         SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT,0,&lockTimeOut,0);
         SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,0,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
- 
+
         AllowSetForegroundWindow(ASFW_ANY);
     }
- 
+
     SetForegroundWindow(hWnd);
- 
+    /* SetFocus(hWndEdit); */
+
     if(dwThisTID != dwCurrTID)
     {
         SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,(PVOID)lockTimeOut,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
@@ -211,6 +222,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
   BOOL bKeyHooked = FALSE;
   BOOL bControl = FALSE;
+  BOOL bCmdKey = FALSE;
   BOOL isDown = FALSE;
   BOOL isUp = FALSE;
   BOOL retVal;
@@ -232,24 +244,25 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
         if(commandMode){
           prevTime = 0;
-          if( p->vkCode == VK_ESCAPE ||
-              p->vkCode == VK_RETURN ||
-              p->vkCode == VK_SPACE
-              ){
-            commandMode = 0;
-          }
-          if( p->vkCode == VK_SPACE ){
-            // ENTER key down
-            keybd_event(VK_RETURN, 0x9C, 0, 0);
-            // ENTER key up
-            keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0);
+          if( p->vkCode == VK_RETURN || p->vkCode == VK_SPACE ){
+            RunCmd();
           }
 
+          /* if( p->vkCode == VK_SPACE ){ */
+          /*   // ENTER key down */
+          /*   keybd_event(VK_RETURN, 0x9C, 0, 0); */
+          /*   // ENTER key up */
+          /*   keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0); */
+          /* } */
+
           bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
-          if(bCtrlG){
-            prevTime = 0;
-            commandMode = FALSE;
-            PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0);
+          if( p->vkCode == VK_ESCAPE ||
+              p->vkCode == VK_RETURN ||
+              p->vkCode == VK_SPACE ||
+              bCtrlG
+              ){
+            HideCmd();
+            bCmdKey = TRUE;
           }
 
         }
@@ -273,36 +286,11 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
       }
     }
 
-  retVal = ( (bKeyHooked && !bControl ) ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
+  retVal = ( (bKeyHooked && !bControl || bCmdKey) ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
 
   if(bKeyHooked){
-    ShellExecuteA( NULL, "open", "C:\\WINDOWS\\system32\\rundll32.exe", "shell32.dll,#61", NULL, SW_SHOWNORMAL );
-    /* Sleep(1000); */
-
-
-HWND hwnd = FindWindow(NULL, "运行");
-
-FILE *f = fopen("d:\\hooklog.txt", "w");
-if (f == NULL)
-{
-    printf("Error opening file!\n");
-    exit(1);
-}
-
-/* print some text */
-const char *text = "Test activate window";
-fprintf(f, "Target: %s\n", text);
-
-/* print integers and floats */
- fprintf(f, "Find Window: %d, %p\n", AllowSetForegroundWindow(GetCurrentProcessId()), GetCurrentProcessId());
-
-fclose(f);
-
-    SetForegroundWindow(hwnd);
-    SetForegroundWindowInternal(hwnd);
-exit(1);
-
-
+    ShowCmd();
+    SetForegroundWindowInternal(hWnd);
     commandMode = 1;
   }
 
