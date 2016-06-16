@@ -20,6 +20,8 @@ bool _trace(TCHAR *format, ...)
 #endif
 
 
+#define GWL_WNDPROC -4
+
 LRESULT CALLBACK LowLevelKeyboardProc(int, WPARAM, LPARAM);
 LRESULT CALLBACK KeyboardProc(int, WPARAM, LPARAM);
 //HINSTANCE ShellExecute( HWND ,  LPCTSTR , LPCTSTR ,  LPCTSTR ,  LPCTSTR , INT  );
@@ -35,6 +37,20 @@ LONG prevTime = 0;
 LONG timeDiff = 9999;
 BOOL bCtrlG = FALSE;
 
+HMENU ID_EDIT1 =  0x8801;
+HMENU ID_BUTTON_OK =  0x8802;
+HMENU ID_BUTTON_CANCEL = 0x8803;
+
+HWND hWndEdit = NULL;
+HWND hWndOK = NULL;
+HWND hWndCancel = NULL;
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+void RunCmd(char *str){
+  ShellExecuteA( NULL, NULL, str, NULL, NULL, SW_SHOWNORMAL );
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
   // Low-level keyboard hook
@@ -42,6 +58,64 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
   // Keyboard hook
   //SetKeyboardHook(WH_KEYBOARD, KeyboardProc, (HINSTANCE)NULL, GetCurrentThreadId());
+
+
+  LPTSTR windowClass = TEXT("WinApp");
+  LPTSTR windowTitle = TEXT("Windows Application");
+  WNDCLASSEX wcex;
+
+  wcex.cbClsExtra = 0;
+  wcex.cbSize = sizeof(WNDCLASSEX);
+  wcex.cbWndExtra = 0;
+  wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+  wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+  wcex.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+  wcex.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+  wcex.hInstance = hInstance;
+  wcex.lpfnWndProc = WndProc;
+  wcex.lpszClassName = windowClass;
+  wcex.lpszMenuName = NULL;
+  wcex.style = CS_HREDRAW | CS_VREDRAW;
+  if (!RegisterClassEx(&wcex))
+    {
+      MessageBox(NULL, TEXT("RegisterClassEx Failed!"), TEXT("Error"),
+                 MB_ICONERROR);
+      return 1;
+    }
+
+  HWND hWnd;
+
+  if (!(hWnd = CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, windowClass, windowTitle, WS_POPUP,
+                              300, 500, 200,
+                              130, NULL, NULL, hInstance, NULL)))
+    {
+      MessageBox(NULL, TEXT("CreateWindow Failed!"), TEXT("Error"), MB_ICONERROR);
+      return 1;
+    }
+
+
+  LONG window_style = GetWindowLong(hWnd, GWL_STYLE);
+  LONG window_ex_style = GetWindowLong(hWnd, GWL_EXSTYLE);
+
+  /* SetWindowLong(hWnd, GWL_STYLE, 0); */
+  /* SetWindowLong(hWnd, GWL_STYLE, window_style & ~(WS_CAPTION | WS_THICKFRAME)); */
+  /* SetWindowLong(hWnd, GWL_EXSTYLE, window_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE)); */
+
+  hWndEdit = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Edit"), TEXT(""),
+                                 WS_CHILD | WS_VISIBLE | WS_GROUP, 10, 10, 180,
+                                 35, hWnd, ID_EDIT1, NULL, NULL);
+
+  hWndOK = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Button"), TEXT("Run"),
+                                 WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON, 10, 50, 80,
+                                 30, hWnd, ID_BUTTON_OK, NULL, NULL);
+
+  hWndCancel = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Button"), TEXT("Cancel"),
+                                 WS_CHILD | WS_VISIBLE, 100, 50, 80,
+                                 30, hWnd, ID_BUTTON_CANCEL, NULL, NULL);
+
+  ShowWindow(hWnd, nCmdShow);
+  UpdateWindow(hWnd);
+  SetFocus(hWndEdit);
 
   MSG Msg;
   while(GetMessage(&Msg, NULL, 0, 0) > 0)
@@ -56,6 +130,35 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
   return 0;
+}
+
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+  switch (msg)
+    {
+    case WM_SETFOCUS: 
+      SetFocus(hWndEdit);
+      return 0;
+
+    case WM_COMMAND:
+      if(LOWORD(wParam) == ID_BUTTON_OK) { // HIWORD(wParam) == BN_CLICKED
+        char txt[1024];
+        GetWindowText(hWndEdit, txt, sizeof(txt));
+        /* MessageBox (hWnd, "The Enter/Return key was pressed", txt, MB_OK); */
+        RunCmd(txt);
+        PostQuitMessage(0);
+      }
+      if(LOWORD(wParam) == ID_BUTTON_CANCEL) {
+        PostQuitMessage(0);
+      }
+      return 0;
+    case WM_DESTROY:
+      PostQuitMessage(0);
+    default:
+      return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+  return FALSE;
 }
 
 void SetKeyboardHook(int idHook, HOOKPROC  lpfn, HINSTANCE hMod, DWORD dwThreadId)
@@ -87,7 +190,7 @@ void SetForegroundWindowInternal(HWND hWnd)
     if(dwThisTID != dwCurrTID)
     {
         AttachThreadInput(dwThisTID, dwCurrTID, TRUE);
- 
+
         SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT,0,&lockTimeOut,0);
         SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,0,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
  
@@ -176,12 +279,8 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
     ShellExecuteA( NULL, "open", "C:\\WINDOWS\\system32\\rundll32.exe", "shell32.dll,#61", NULL, SW_SHOWNORMAL );
     /* Sleep(1000); */
 
-  // show msgbox to AllowSetForegroundWindow()
-  HWND  hCurrWnd = GetForegroundWindow();
-  MessageBox(hCurrWnd, NULL, NULL, MB_ICONWARNING );
 
-
-HWND hwnd = FindWindow(NULL, "Everything");
+HWND hwnd = FindWindow(NULL, "运行");
 
 FILE *f = fopen("d:\\hooklog.txt", "w");
 if (f == NULL)

@@ -1,1 +1,0 @@
-WinActivate("运行")
