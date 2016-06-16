@@ -129,8 +129,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   // Low-level keyboard hook
   SetKeyboardHook(WH_KEYBOARD_LL, LowLevelKeyboardProc, hInstance, 0);
 
-  winLeftPos = (GetSystemMetrics(SM_CXSCREEN) - winWidth) * winPosRatio;
-  winTopPos = (GetSystemMetrics(SM_CYSCREEN)/2 - winHeight) * winPosRatio;
+  winLeftPos = (GetSystemMetrics(SM_CXSCREEN) - winWidth) * winPosRatio;  // left pos always in ratio
+  winTopPos = (GetSystemMetrics(SM_CYSCREEN) - winHeight) * 0.5;  // Init top is in center
 
   LPTSTR windowClass = TEXT("KeyHook");
   LPTSTR windowTitle = TEXT("KeyHook Window");
