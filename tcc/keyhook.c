@@ -45,22 +45,75 @@ HWND hWndCancel;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+
+void SetForegroundWindowInternal(HWND hWnd)
+{
+    if(!IsWindow(hWnd)) return;
+
+    //relation time of SetForegroundWindow lock
+    DWORD lockTimeOut = 0;
+    HWND  hCurrWnd = GetForegroundWindow();
+    DWORD dwThisTID = GetCurrentThreadId(),
+          dwCurrTID = GetWindowThreadProcessId(hCurrWnd,0);
+
+    //we need to bypass some limitations from Microsoft :)
+    if(dwThisTID != dwCurrTID)
+    {
+        AttachThreadInput(dwThisTID, dwCurrTID, TRUE);
+
+        SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT,0,&lockTimeOut,0);
+        SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,0,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
+
+        AllowSetForegroundWindow(ASFW_ANY);
+    }
+
+    SetForegroundWindow(hWnd);
+
+    if(dwThisTID != dwCurrTID)
+    {
+        SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,(PVOID)lockTimeOut,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
+        AttachThreadInput(dwThisTID, dwCurrTID, FALSE);
+    }
+}
+
+
+char *TrimWhiteSpace(char *str)
+{
+  char *end;
+
+  // Trim leading space
+  while(isspace(*str)) str++;
+
+  if(*str == 0)  // All spaces?
+    return str;
+
+  // Trim trailing space
+  end = str + strlen(str) - 1;
+  while(end > str && isspace(*end)) end--;
+
+  // Write new null terminator
+  *(end+1) = 0;
+
+  return str;
+}
+
 void ShowCmd(){
   ShowWindow(hWnd, SW_SHOW);
-  SetWindowText(hWndEdit, "");
+  SetForegroundWindowInternal(hWnd);
+  SetFocus(hWndEdit);
 }
+
 void HideCmd(){
   prevTime = 0;
   commandMode = 0;
   ShowWindow(hWnd, SW_HIDE);
 }
-void RunCmd(){
-  commandMode = 0;
+
+HINSTANCE RunCmd(){
   char cmd[1024];
   GetWindowText(hWndEdit, cmd, sizeof(cmd));
   SetWindowText(hWndEdit, "");
-  ShellExecuteA( NULL, NULL, cmd, NULL, NULL, SW_SHOWNORMAL );
-  HideCmd();
+  return ShellExecuteA( NULL, NULL, TrimWhiteSpace(cmd), NULL, NULL, SW_SHOWNORMAL );
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -147,22 +200,36 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   switch (msg)
     {
-    case WM_KILLFOCUS:
-      HideCmd();
-      return 0;
+      /* case WM_KILLFOCUS: */
     case WM_SETFOCUS:
-      SetFocus(hWndEdit);
-      return 0;
+      ShowCmd();
+      return DefWindowProc(hWnd, msg, wParam, lParam);
+
+    case WM_ACTIVATE:
+    case WM_ACTIVATEAPP:
+      switch(wParam)
+        {
+        case 0:  //FALSE or WM_INACTIVE
+          HideCmd();
+          break;
+        case 1:  //TRUE or WM_ACTIVE or WM_CLICKACTIVE
+        case 2:
+          /* ShowCmd(); */
+          break;
+        }
+      return DefWindowProc(hWnd, msg, wParam, lParam);
 
     case WM_COMMAND:
       if((HMENU)LOWORD(wParam) == (HMENU)ID_BUTTON_OK) { // HIWORD(wParam) == BN_CLICKED
         /* MessageBox (hWnd, "The Enter/Return key was pressed", txt, MB_OK); */
         RunCmd();
+        HideCmd();
       }
       if((HMENU)LOWORD(wParam) == (HMENU)ID_BUTTON_CANCEL) {
         HideCmd();
       }
-      return 0;
+      return DefWindowProc(hWnd, msg, wParam, lParam);
+
     case WM_DESTROY:
       PostQuitMessage(0);
     default:
@@ -186,36 +253,6 @@ void SetKeyboardHook(int idHook, HOOKPROC  lpfn, HINSTANCE hMod, DWORD dwThreadI
   // UnhookWindowsHookEx(hhkKeyboard);
 }
 
-void SetForegroundWindowInternal(HWND hWnd)
-{
-    if(!IsWindow(hWnd)) return;
- 
-    //relation time of SetForegroundWindow lock
-    DWORD lockTimeOut = 0;
-    HWND  hCurrWnd = GetForegroundWindow();
-    DWORD dwThisTID = GetCurrentThreadId(),
-          dwCurrTID = GetWindowThreadProcessId(hCurrWnd,0);
-
-    //we need to bypass some limitations from Microsoft :)
-    if(dwThisTID != dwCurrTID)
-    {
-        AttachThreadInput(dwThisTID, dwCurrTID, TRUE);
-
-        SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT,0,&lockTimeOut,0);
-        SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,0,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
-
-        AllowSetForegroundWindow(ASFW_ANY);
-    }
-
-    SetForegroundWindow(hWnd);
-    /* SetFocus(hWndEdit); */
-
-    if(dwThisTID != dwCurrTID)
-    {
-        SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,(PVOID)lockTimeOut,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
-        AttachThreadInput(dwThisTID, dwCurrTID, FALSE);
-    }
-}
 
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
@@ -226,6 +263,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
   BOOL isDown = FALSE;
   BOOL isUp = FALSE;
   BOOL retVal;
+  HINSTANCE ShellRet=0;
 
   if (nCode == HC_ACTION)
     {
@@ -245,7 +283,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
         if(commandMode){
           prevTime = 0;
           if( p->vkCode == VK_RETURN || p->vkCode == VK_SPACE ){
-            RunCmd();
+            ShellRet = RunCmd();
           }
 
           /* if( p->vkCode == VK_SPACE ){ */
@@ -256,6 +294,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
           /* } */
 
           bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
+          if(ShellRet>32)  // RunCmd succeed
           if( p->vkCode == VK_ESCAPE ||
               p->vkCode == VK_RETURN ||
               p->vkCode == VK_SPACE ||
@@ -287,10 +326,10 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
     }
 
   retVal = ( (bKeyHooked && !bControl || bCmdKey) ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
-
+  if(bCmdKey) bCmdKey = FALSE;
+  
   if(bKeyHooked){
     ShowCmd();
-    SetForegroundWindowInternal(hWnd);
     commandMode = 1;
   }
 
