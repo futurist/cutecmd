@@ -2,6 +2,9 @@
 #include <stdio.h>
 /* #define _DEBUG */
 
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 #ifdef _DEBUG
 #include <stdio.h>
 bool _trace(TCHAR *format, ...)
@@ -20,11 +23,8 @@ bool _trace(TCHAR *format, ...)
 #endif
 
 LRESULT CALLBACK LowLevelKeyboardProc(int, WPARAM, LPARAM);
-LRESULT CALLBACK KeyboardProc(int, WPARAM, LPARAM);
 //HINSTANCE ShellExecute( HWND ,  LPCTSTR , LPCTSTR ,  LPCTSTR ,  LPCTSTR , INT  );
 
-void KeyboardHook();
-void LowLevelKeyboardHook(HINSTANCE);
 void SetKeyboardHook(int, HOOKPROC, HINSTANCE, DWORD);
 
 
@@ -33,6 +33,12 @@ LONG commandMode = 0;
 LONG prevTime = 0;
 LONG timeDiff = 9999;
 BOOL bCtrlG = FALSE;
+
+LONG winWidth = 200;
+LONG winHeight = 90;
+LONG winLeftPos = 300;
+LONG winTopPos = 300;
+float winPosRatio = .3;
 
 HMENU ID_EDIT1 =  (HMENU)0x8801;
 HMENU ID_BUTTON_OK = (HMENU)0x8802;
@@ -123,9 +129,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   // Low-level keyboard hook
   SetKeyboardHook(WH_KEYBOARD_LL, LowLevelKeyboardProc, hInstance, 0);
 
-  // Keyboard hook
-  //SetKeyboardHook(WH_KEYBOARD, KeyboardProc, (HINSTANCE)NULL, GetCurrentThreadId());
-
+  winLeftPos = (GetSystemMetrics(SM_CXSCREEN) - winWidth) * winPosRatio;
+  winTopPos = (GetSystemMetrics(SM_CYSCREEN)/2 - winHeight) * winPosRatio;
 
   LPTSTR windowClass = TEXT("KeyHook");
   LPTSTR windowTitle = TEXT("KeyHook Window");
@@ -151,7 +156,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
   if (!(hWnd = CreateWindowEx(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, windowClass, windowTitle, WS_POPUP,
-                              300, 300, 200, 90, NULL, NULL, hInstance, NULL)))
+                              winLeftPos, winTopPos, winWidth, winHeight, NULL, NULL, hInstance, NULL)))
     {
       MessageBox(NULL, TEXT("CreateWindow Failed!"), TEXT("Error"), MB_ICONERROR);
       return 1;
@@ -284,6 +289,16 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
         if(commandMode){
           prevTime = 0;
+          if( p->vkCode == VK_UP){
+            winTopPos = MAX(0, winTopPos-100);
+            SetWindowPos(hWnd, NULL, winLeftPos, winTopPos, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+          }
+
+          if( p->vkCode == VK_DOWN){
+            winTopPos = MIN(winTopPos+100, GetSystemMetrics(SM_CYSCREEN)-100);
+            SetWindowPos(hWnd, NULL, winLeftPos, winTopPos, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
+          }
+
           if( p->vkCode == VK_RETURN || p->vkCode == VK_SPACE ){
             ShellRet = RunCmd();
           }
@@ -337,16 +352,3 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
   return retVal;
 }
 
-
-
-LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
-{
-  BOOL bKeyHooked = FALSE;
-
-  if (code == HC_ACTION)
-    {
-      bKeyHooked = (wParam == VK_RETURN);
-    }
-
-  return (bKeyHooked ? 1 : CallNextHookEx(NULL, code, wParam, lParam));
-}
