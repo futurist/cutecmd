@@ -102,6 +102,8 @@ char *TrimWhiteSpace(char *str)
 
   return str;
 }
+HFONT hfReg;
+
 
 void ShowCmd(){
   ShowWindow(hWnd, SW_SHOW);
@@ -123,6 +125,7 @@ HINSTANCE RunCmd(){
   if(strlen(cmd2)==0) return 0;
   return (HINSTANCE)ShellExecuteA( NULL, NULL, cmd2, NULL, NULL, SW_SHOWNORMAL);
 }
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -170,22 +173,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   /* SetWindowLong(hWnd, GWL_STYLE, window_style & ~(WS_CAPTION | WS_THICKFRAME)); */
   /* SetWindowLong(hWnd, GWL_EXSTYLE, window_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE)); */
 
-  hWndEdit = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Edit"), TEXT(""),
-                                 WS_CHILD | WS_VISIBLE | WS_GROUP, 10, 10, 180,
+  hWndEdit = CreateWindow(TEXT("Edit"), TEXT(""),
+                                 WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER, 10, 10, 180,
                                  35, hWnd, ID_EDIT1, NULL, NULL);
 
   hWndOK = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Button"), TEXT("Run"),
-                                 WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON, 10, 50, 80,
+                                 WS_CHILD | WS_VISIBLE, 10, 50, 80,
                                  30, hWnd, ID_BUTTON_OK, NULL, NULL);
 
   hWndCancel = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Button"), TEXT("Cancel"),
                                  WS_CHILD | WS_VISIBLE, 110, 50, 80,
                                  30, hWnd, ID_BUTTON_CANCEL, NULL, NULL);
 
+  /* hWndEdit.ModifyStyleEx(WS_EX_CLIENTEDGE, 0, SWP_DRAWFRAME | SWP_FRAMECHANGED); */
+
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
   SetFocus(hWndEdit);
   HideCmd();
+
+  hfReg = CreateFont(26, 0, 0, 0, 0, FALSE, 0, 0, 0, 0, 0, 0, 0, "Arial");
+  SendMessage(hWndEdit, WM_SETFONT, (WPARAM)hfReg, MAKELPARAM(FALSE, 0));
 
   MSG Msg;
   while(GetMessage(&Msg, NULL, 0, 0) > 0)
