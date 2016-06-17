@@ -33,24 +33,24 @@ LONG commandMode = 0;
 LONG prevTime = 0;
 LONG timeDiff = 9999;
 BOOL bCtrlG = FALSE;
+BOOL bCtrlF = FALSE;
 
 LONG winWidth = 200;
-LONG winHeight = 90;
+LONG winHeight = 55;
 LONG winLeftPos = 300;
 LONG winTopPos = 300;
 float winPosRatio = .3;
 
 HMENU ID_EDIT1 =  (HMENU)0x8801;
-HMENU ID_BUTTON_OK = (HMENU)0x8802;
-HMENU ID_BUTTON_CANCEL = (HMENU)0x8803;
+
+char cmd[1024];  // cache command string
 
 HWND hWnd;
 HWND hWndEdit;
-HWND hWndOK;
-HWND hWndCancel;
+DWORD dwThisTID;
+DWORD dwCurrTID;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 
 void SetForegroundWindowInternal(HWND hWnd)
 {
@@ -58,9 +58,6 @@ void SetForegroundWindowInternal(HWND hWnd)
 
     //relation time of SetForegroundWindow lock
     DWORD lockTimeOut = 0;
-    HWND  hCurrWnd = GetForegroundWindow();
-    DWORD dwThisTID = GetCurrentThreadId(),
-          dwCurrTID = GetWindowThreadProcessId(hCurrWnd,0);
 
     //we need to bypass some limitations from Microsoft :)
     if(dwThisTID != dwCurrTID)
@@ -114,11 +111,12 @@ void ShowCmd(){
 void HideCmd(){
   prevTime = 0;
   commandMode = 0;
+  bCtrlF = FALSE;
+  bCtrlG = FALSE;
   ShowWindow(hWnd, SW_HIDE);
 }
 
 HINSTANCE RunCmd(){
-  char cmd[1024];
   GetWindowText(hWndEdit, cmd, sizeof(cmd));
   SetWindowText(hWndEdit, "");
   char *cmd2 = TrimWhiteSpace(cmd);
@@ -166,34 +164,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
 
-  LONG window_style = GetWindowLong(hWnd, GWL_STYLE);
-  LONG window_ex_style = GetWindowLong(hWnd, GWL_EXSTYLE);
-
-  /* SetWindowLong(hWnd, GWL_STYLE, 0); */
-  /* SetWindowLong(hWnd, GWL_STYLE, window_style & ~(WS_CAPTION | WS_THICKFRAME)); */
-  /* SetWindowLong(hWnd, GWL_EXSTYLE, window_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE)); */
-
   hWndEdit = CreateWindow(TEXT("Edit"), TEXT(""),
                                  WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER, 10, 10, 180,
                                  35, hWnd, ID_EDIT1, NULL, NULL);
-
-  hWndOK = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Button"), TEXT("Run"),
-                                 WS_CHILD | WS_VISIBLE, 10, 50, 80,
-                                 30, hWnd, ID_BUTTON_OK, NULL, NULL);
-
-  hWndCancel = CreateWindowEx(WS_EX_CLIENTEDGE, TEXT("Button"), TEXT("Cancel"),
-                                 WS_CHILD | WS_VISIBLE, 110, 50, 80,
-                                 30, hWnd, ID_BUTTON_CANCEL, NULL, NULL);
-
-  /* hWndEdit.ModifyStyleEx(WS_EX_CLIENTEDGE, 0, SWP_DRAWFRAME | SWP_FRAMECHANGED); */
 
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
   SetFocus(hWndEdit);
   HideCmd();
 
-  hfReg = CreateFont(26, 0, 0, 0, 0, FALSE, 0, 0, 0, 0, 0, 0, 0, "Arial");
+  hfReg = CreateFont(30, 0, 0, 0, 0, FALSE, 0, 0, 0, 0, 0, 0, 0, "Arial");
   SendMessage(hWndEdit, WM_SETFONT, (WPARAM)hfReg, MAKELPARAM(FALSE, 0));
+
+  dwThisTID = GetCurrentThreadId();
+  dwCurrTID = GetWindowThreadProcessId(hWnd,0);
 
   MSG Msg;
   while(GetMessage(&Msg, NULL, 0, 0) > 0)
@@ -234,17 +218,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
       return DefWindowProc(hWnd, msg, wParam, lParam);
 
-    case WM_COMMAND:
-      if((HMENU)LOWORD(wParam) == (HMENU)ID_BUTTON_OK) { // HIWORD(wParam) == BN_CLICKED
-        /* MessageBox (hWnd, "The Enter/Return key was pressed", txt, MB_OK); */
-        RunCmd();
-        HideCmd();
-      }
-      if((HMENU)LOWORD(wParam) == (HMENU)ID_BUTTON_CANCEL) {
-        HideCmd();
-      }
-      return DefWindowProc(hWnd, msg, wParam, lParam);
-
     case WM_DESTROY:
       PostQuitMessage(0);
     default:
@@ -257,15 +230,6 @@ void SetKeyboardHook(int idHook, HOOKPROC  lpfn, HINSTANCE hMod, DWORD dwThreadI
 {
   // Install the keyboard hook
   hhkKeyboard = SetWindowsHookEx(idHook, lpfn, hMod, dwThreadId);
-
-  // Keep this app running until we're told to stop
-
-  //MessageBox(NULL,
-  //  TEXT("Enter Key is now disabled.\n")
-  //  TEXT("Click \"Ok\" to terminate this application and re-enable that key."),
-  //  TEXT("Disable Low-Level Keys"), MB_OK);
-
-  // UnhookWindowsHookEx(hhkKeyboard);
 }
 
 
@@ -296,7 +260,12 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                           );
 
         if(commandMode){
+
           prevTime = 0;
+
+          bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
+          bCtrlF = (p->vkCode== 0x46 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+F */
+
           if( p->vkCode == VK_UP){
             winTopPos = MAX(0, winTopPos-100);
             SetWindowPos(hWnd, NULL, winLeftPos, winTopPos, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
@@ -318,7 +287,11 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
           /*   keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0); */
           /* } */
 
-          bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
+          if( bCtrlF ){
+            // Append Space
+            SendMessage(hWndEdit, EM_REPLACESEL, 0, (LPARAM)TEXT(" "));
+          }
+
           if( ShellRet> (HINSTANCE) 32 && // RunCmd succeed
               ( p->vkCode == VK_RETURN ||
                 p->vkCode == VK_SPACE)
