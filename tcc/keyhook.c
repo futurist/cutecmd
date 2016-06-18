@@ -246,7 +246,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
           prevTime = 0;
 
           bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
-          bCtrlF = (p->vkCode== 0x46 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+F */
+          bCtrlF = (p->vkCode== 0x20 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+F */
 
           if( p->vkCode == VK_UP){
             winTopPos = MAX(0, winTopPos-100);
@@ -258,7 +258,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             SetWindowPos(hWnd, NULL, winLeftPos, winTopPos, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
           }
 
-          if( p->vkCode == VK_RETURN || p->vkCode == VK_SPACE ){
+          if( p->vkCode == VK_RETURN || !bCtrlF && p->vkCode == VK_SPACE ){
             ShellRet = RunCmd();
           }
 
