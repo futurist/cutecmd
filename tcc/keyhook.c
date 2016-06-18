@@ -35,7 +35,7 @@ LONG timeDiff = 9999;
 BOOL bCtrlG = FALSE;
 BOOL bCtrlF = FALSE;
 
-LONG winWidth = 600;
+LONG winWidth = 500;
 LONG winHeight = 55;
 LONG winLeftPos = 300;
 LONG winTopPos = 300;
@@ -44,6 +44,7 @@ float winPosRatio = .3;
 HMENU ID_EDIT1 =  (HMENU)0x8801;
 
 char cmd[1024];  // cache command string
+char seps[]   = " ,;\t\n"; // command param seperator
 
 HWND hWnd;
 HWND hWndEdit;
@@ -106,7 +107,6 @@ HINSTANCE RunCmd(){
   if(strlen(cmd2)==0) return 0;
 
   int len = strlen(cmd2);
-  char seps[]   = " ,;\t\n";
   char *command = strtok( cmd2, seps );
   char *args = (strlen(command)<len) ? cmd2+strlen(command)+1 : "";
   return (HINSTANCE)ShellExecuteA( NULL, NULL, command, args, NULL, SW_SHOWNORMAL);
