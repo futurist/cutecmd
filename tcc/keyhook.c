@@ -52,34 +52,6 @@ DWORD dwCurrTID;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-void SetForegroundWindowInternal(HWND hWnd)
-{
-    if(!IsWindow(hWnd)) return;
-
-    //relation time of SetForegroundWindow lock
-    DWORD lockTimeOut = 0;
-
-    //we need to bypass some limitations from Microsoft :)
-    if(dwThisTID != dwCurrTID)
-    {
-        AttachThreadInput(dwThisTID, dwCurrTID, TRUE);
-
-        SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT,0,&lockTimeOut,0);
-        SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,0,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
-
-        AllowSetForegroundWindow(ASFW_ANY);
-    }
-
-    SetForegroundWindow(hWnd);
-
-    if(dwThisTID != dwCurrTID)
-    {
-        SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT,0,(PVOID)lockTimeOut,SPIF_SENDWININICHANGE | SPIF_UPDATEINIFILE);
-        AttachThreadInput(dwThisTID, dwCurrTID, FALSE);
-    }
-}
-
-
 char *TrimWhiteSpace(char *str)
 {
   char *end;
@@ -106,8 +78,8 @@ void ClickOnWindow(){
   GetCursorPos(&p);
   int screenX = GetSystemMetrics( SM_CXVIRTUALSCREEN );
   int screenY = GetSystemMetrics( SM_CYVIRTUALSCREEN );
-  DWORD L = (DWORD)((winLeftPos+30)*(65535/screenX));
-  DWORD T = (DWORD)((winTopPos+30)*(65535/screenY));
+  DWORD L = (DWORD)((winLeftPos+10)*(65535/screenX));
+  DWORD T = (DWORD)((winTopPos+10)*(65535/screenY));
   mouse_event(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE, L, T, 0, 0);
   mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);  // relative pos
   mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);  // relative pos
@@ -116,8 +88,6 @@ void ClickOnWindow(){
 
 void ShowCmd(){
   ShowWindow(hWnd, SW_SHOW);
-  /* SetForegroundWindowInternal(hWnd); */
-  ClickOnWindow();
   SetFocus(hWndEdit);
 }
 
@@ -183,7 +153,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
-  SetFocus(hWndEdit);
   HideCmd();
 
   hfReg = CreateFont(30, 0, 0, 0, 0, FALSE, 0, 0, 0, 0, 0, 0, 0, "Arial");
@@ -212,11 +181,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   switch (msg)
     {
-      /* case WM_KILLFOCUS: */
-    case WM_SETFOCUS:
-      /* ShowCmd(); */
-      return DefWindowProc(hWnd, msg, wParam, lParam);
-
     case WM_ACTIVATE:
     case WM_ACTIVATEAPP:
       switch(wParam)
@@ -340,6 +304,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
   if(bKeyHooked){
     ShowCmd();
+    ClickOnWindow();
     commandMode = 1;
   }
 
