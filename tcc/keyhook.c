@@ -35,7 +35,7 @@ LONG timeDiff = 9999;
 BOOL bCtrlG = FALSE;
 BOOL bCtrlF = FALSE;
 
-LONG winWidth = 200;
+LONG winWidth = 600;
 LONG winHeight = 55;
 LONG winLeftPos = 300;
 LONG winTopPos = 300;
@@ -101,10 +101,23 @@ char *TrimWhiteSpace(char *str)
 }
 HFONT hfReg;
 
+void ClickOnWindow(){
+  POINT p;
+  GetCursorPos(&p);
+  int screenX = GetSystemMetrics( SM_CXVIRTUALSCREEN );
+  int screenY = GetSystemMetrics( SM_CYVIRTUALSCREEN );
+  DWORD L = (DWORD)((winLeftPos+30)*(65535/screenX));
+  DWORD T = (DWORD)((winTopPos+30)*(65535/screenY));
+  mouse_event(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE, L, T, 0, 0);
+  mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);  // relative pos
+  mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);  // relative pos
+  SetCursorPos(p.x, p.y);
+}
 
 void ShowCmd(){
   ShowWindow(hWnd, SW_SHOW);
-  SetForegroundWindowInternal(hWnd);
+  /* SetForegroundWindowInternal(hWnd); */
+  ClickOnWindow();
   SetFocus(hWndEdit);
 }
 
@@ -130,8 +143,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   // Low-level keyboard hook
   SetKeyboardHook(WH_KEYBOARD_LL, LowLevelKeyboardProc, hInstance, 0);
 
-  winLeftPos = (GetSystemMetrics(SM_CXSCREEN) - winWidth) * winPosRatio;  // left pos always in ratio
-  winTopPos = (GetSystemMetrics(SM_CYSCREEN) - winHeight) * 0.5;  // Init top is in center
+  winLeftPos = (GetSystemMetrics(SM_CXVIRTUALSCREEN) - winWidth) * winPosRatio;  // left pos always in ratio
+  winTopPos = (GetSystemMetrics(SM_CYVIRTUALSCREEN) - winHeight) * 0.5;  // Init top is in center
 
   LPTSTR windowClass = TEXT("KeyHook");
   LPTSTR windowTitle = TEXT("KeyHook Window");
@@ -165,8 +178,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
   hWndEdit = CreateWindow(TEXT("Edit"), TEXT(""),
-                                 WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER, 10, 10, 180,
-                                 35, hWnd, ID_EDIT1, NULL, NULL);
+                                 WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER, 10, 10, winWidth-20,
+                                 winHeight-20, hWnd, ID_EDIT1, NULL, NULL);
 
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
@@ -201,7 +214,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
       /* case WM_KILLFOCUS: */
     case WM_SETFOCUS:
-      ShowCmd();
+      /* ShowCmd(); */
       return DefWindowProc(hWnd, msg, wParam, lParam);
 
     case WM_ACTIVATE:
@@ -213,7 +226,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
           break;
         case 1:  //TRUE or WM_ACTIVE or WM_CLICKACTIVE
         case 2:
-          /* ShowCmd(); */
+          ShowCmd();
           break;
         }
       return DefWindowProc(hWnd, msg, wParam, lParam);
@@ -272,7 +285,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
           }
 
           if( p->vkCode == VK_DOWN){
-            winTopPos = MIN(winTopPos+100, GetSystemMetrics(SM_CYSCREEN)-100);
+            winTopPos = MIN(winTopPos+100, GetSystemMetrics(SM_CYVIRTUALSCREEN)-100);
             SetWindowPos(hWnd, NULL, winLeftPos, winTopPos, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
           }
 
