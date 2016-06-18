@@ -104,7 +104,12 @@ HINSTANCE RunCmd(){
   SetWindowText(hWndEdit, "");
   char *cmd2 = TrimWhiteSpace(cmd);
   if(strlen(cmd2)==0) return 0;
-  return (HINSTANCE)ShellExecuteA( NULL, NULL, cmd2, NULL, NULL, SW_SHOWNORMAL);
+
+  int len = strlen(cmd2);
+  char seps[]   = " ,;\t\n";
+  char *command = strtok( cmd2, seps );
+  char *args = (strlen(command)<len) ? cmd2+strlen(command)+1 : "";
+  return (HINSTANCE)ShellExecuteA( NULL, NULL, command, args, NULL, SW_SHOWNORMAL);
 }
 
 
