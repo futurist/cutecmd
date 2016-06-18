@@ -31,6 +31,7 @@ void SetKeyboardHook(int, HOOKPROC, HINSTANCE, DWORD);
 HHOOK hhkKeyboard;
 LONG commandMode = 0;
 LONG prevTime = 0;
+LONG prevKey = 0;
 LONG timeDiff = 9999;
 BOOL bCtrlG = FALSE;
 BOOL bCtrlF = FALSE;
@@ -48,8 +49,6 @@ char seps[]   = " ,;\t\n"; // command param seperator
 
 HWND hWnd;
 HWND hWndEdit;
-DWORD dwThisTID;
-DWORD dwCurrTID;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -136,7 +135,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   wcex.lpfnWndProc = WndProc;
   wcex.lpszClassName = windowClass;
   wcex.lpszMenuName = NULL;
-  wcex.style = CS_HREDRAW | CS_VREDRAW;
+  wcex.style = CS_DROPSHADOW;     //CS_HREDRAW | CS_VREDRAW; don't use this 2 to save memory
   if (!RegisterClassEx(&wcex))
     {
       MessageBox(NULL, TEXT("RegisterClassEx Failed!"), TEXT("Error"),
@@ -162,9 +161,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
   hfReg = CreateFont(30, 0, 0, 0, 0, FALSE, 0, 0, 0, 0, 0, 0, 0, "Arial");
   SendMessage(hWndEdit, WM_SETFONT, (WPARAM)hfReg, MAKELPARAM(FALSE, 0));
-
-  dwThisTID = GetCurrentThreadId();
-  dwCurrTID = GetWindowThreadProcessId(hWnd,0);
 
   MSG Msg;
   while(GetMessage(&Msg, NULL, 0, 0) > 0)
@@ -246,7 +242,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
           prevTime = 0;
 
           bCtrlG = (p->vkCode== 0x47 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+G */
-          bCtrlF = (p->vkCode== 0x20 && ( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ); /* Ctrl+F */
+          bCtrlF = (p->vkCode== 0x20 && ( GetKeyState( VK_LMENU ) & 0x8000) != 0 ); /* Ctrl+F */
 
           if( p->vkCode == VK_UP){
             winTopPos = MAX(0, winTopPos-100);
