@@ -152,8 +152,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
   hWndEdit = CreateWindow(TEXT("Edit"), TEXT(""),
-                                 WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER, 10, 10, winWidth-20,
-                                 winHeight-20, hWnd, ID_EDIT1, NULL, NULL);
+                          WS_CHILD | WS_VISIBLE | WS_GROUP | WS_BORDER, 10, 10, winWidth-20,
+                          winHeight-20, hWnd, ID_EDIT1, NULL, NULL);
 
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
@@ -161,6 +161,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
   hfReg = CreateFont(30, 0, 0, 0, 0, FALSE, 0, 0, 0, 0, 0, 0, 0, "Arial");
   SendMessage(hWndEdit, WM_SETFONT, (WPARAM)hfReg, MAKELPARAM(FALSE, 0));
+
+  // Keep only one instance using mutex
+  HANDLE m_hMutex;
+  m_hMutex  =  CreateMutex(NULL, TRUE,  "KeyHookProg" );
+
+  if ((m_hMutex  !=  NULL)  &&  (GetLastError()  ==  ERROR_ALREADY_EXISTS))
+    {
+      ReleaseMutex(m_hMutex);
+      return  FALSE;
+    }
 
   MSG Msg;
   while(GetMessage(&Msg, NULL, 0, 0) > 0)
@@ -170,6 +180,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     }
 
+  // release mutex
+  if (m_hMutex  !=  NULL)
+    {
+      ReleaseMutex(m_hMutex);
+      CloseHandle(m_hMutex);
+    }
 
   UnhookWindowsHookEx(hhkKeyboard);
 
@@ -311,4 +327,3 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
   return retVal;
 }
-
