@@ -8,7 +8,7 @@ Project target:
 
  - Tiny(now it's 7K), Lowest memory used
 
- - Open App, or switch to it if opened
+ - Launch App, or switch to it if opened
 
  - With AutoIt, it can have unlimited extention
 
@@ -47,18 +47,18 @@ Be carefule about the **Path** of each shortcuts, <kbd>Alt+Enter</kbd> to open a
 
 1. Execuable path
 
-2. Matching method: **title** or **class**
+2. Window Matching method: **title** or **class**
 
-3. Matching keywords
+3. Window Matching keywords
 
 Example: `C:\WINDOWS\open.au3 "chrome.exe" title "Google Chrome"`
 
 
 ## Build
 
-For keyhook, using [TCC](http://bellard.org/tcc/) to build, no **CPP** code, keep it small.
+For `keyhook`, using [TCC](http://bellard.org/tcc/) to build, keep it small.
 
-Import the definitions in shell32.dll as below:
+Import the API definitions in `shell32.dll` as below:
 
     C:\tcc>tiny_impdef.exe c:\WINDOWS\system32\shell32.dll
     move shell32.def lib\
@@ -67,6 +67,10 @@ Complie:
 
     tcc keyhook.c -lshell32
 
+## Document translate
+
+[zh-CN](docs/README-zh-CN.md)
+*(more translations welcome!)*
 
 
 
