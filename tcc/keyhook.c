@@ -6,20 +6,7 @@
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 #ifdef _DEBUG
-#include <stdio.h>
-bool _trace(TCHAR *format, ...)
-{
-  TCHAR buffer[1000];
-
-  va_list argptr;
-  va_start(argptr, format);
-  wvsprintf(buffer, format, argptr);
-  va_end(argptr);
-
-  OutputDebugString(buffer);
-
-  return true;
-}
+FILE* debugFile;
 #endif
 
 LRESULT CALLBACK LowLevelKeyboardProc(int, WPARAM, LPARAM);
@@ -114,6 +101,9 @@ HINSTANCE RunCmd(){
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+#ifdef _DEBUG
+  debugFile = fopen("logFile.txt", "a");
+#endif
   // Low-level keyboard hook
   SetKeyboardHook(WH_KEYBOARD_LL, LowLevelKeyboardProc, hInstance, 0);
 
@@ -213,6 +203,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
       return DefWindowProc(hWnd, msg, wParam, lParam);
 
     case WM_DESTROY:
+#ifdef _DEBUG
+      fclose(debugFile);
+#endif
       PostQuitMessage(0);
     default:
       return DefWindowProc(hWnd, msg, wParam, lParam);
@@ -248,10 +241,10 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
       if (isDown) {
 
         //** key is ctrl+shift+SPC
-        bKeyHooked = 0&& (( p->vkCode == VK_SPACE ) &&
-                          (( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ) &&
-                          ((GetKeyState( VK_LSHIFT ) & 0x8000) != 0)
-                          );
+        /* bKeyHooked = (( p->vkCode == VK_SPACE ) && */
+        /*                   (( GetKeyState( VK_LCONTROL ) & 0x8000) != 0 ) && */
+        /*                   ((GetKeyState( VK_LSHIFT ) & 0x8000) != 0) */
+        /*                   ); */
 
         if(commandMode){
 
@@ -300,19 +293,22 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
       //** key is ctrl+ctrl within 500 ms
       bControl = (p->vkCode == VK_LCONTROL);
-      if( bControl ){
+      if( bControl ) {
 
         if(isUp) {
 
+#ifdef _DEBUG
+          fprintf(debugFile, "%ld, %ld\n", prevTime, GetTickCount());
+          /* _trace( L"timeDiff is %d\n",  timeDiff ); */
+#endif
+
           timeDiff = GetTickCount() - prevTime;
           prevTime = GetTickCount();
-#ifdef _DEBUG
-          _trace( L"timeDiff is %d\n",  timeDiff );
-#endif
           bKeyHooked = timeDiff<500;
         }
       } else {
         prevTime = 0;
+        bKeyHooked = FALSE;
       }
     }
 
