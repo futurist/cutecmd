@@ -12,7 +12,7 @@ Project target:
 
  - With AutoIt, it can have unlimited extention
 
-![cutecmd snapshot](screenshot.gif)
+![CuteCmd snapshot](screenshot.gif)
 
 
 ## Install
