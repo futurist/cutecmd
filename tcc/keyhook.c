@@ -86,16 +86,23 @@ void HideCmd(){
   ShowWindow(hWnd, SW_HIDE);
 }
 
-HINSTANCE RunCmd(){
+HINSTANCE RunCmd(char * suffix) {
   GetWindowText(hWndEdit, cmd, sizeof(cmd));
-  SetWindowText(hWndEdit, "");
   char *cmd2 = TrimWhiteSpace(cmd);
   if(strlen(cmd2)==0) return 0;
 
+  // concat command line buffer
   int len = strlen(cmd2);
   char *command = strtok( cmd2, seps );
+
+  // concat suffix
+  char strCmd[255];
+  strcpy(strCmd, command);
+  strcat(strCmd, suffix);
+
+  /* MessageBox(NULL, TEXT("strCmd"), TEXT(strCmd), MB_ICONERROR); */
   char *args = (strlen(command)<len) ? cmd2+strlen(command)+1 : "";
-  return (HINSTANCE)ShellExecuteA( NULL, NULL, command, args, NULL, SW_SHOWNORMAL);
+  return (HINSTANCE)ShellExecuteA( NULL, NULL, strCmd, args, NULL, SW_SHOWNORMAL);
 }
 
 
@@ -263,27 +270,25 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             SetWindowPos(hWnd, NULL, winLeftPos, winTopPos, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
           }
 
-          if( p->vkCode == VK_RETURN || !bCtrlF && p->vkCode == VK_SPACE ){
-            ShellRet = RunCmd();
-          }
-
-          /* if( p->vkCode == VK_SPACE ){ */
-          /*   // ENTER key down */
-          /*   keybd_event(VK_RETURN, 0x9C, 0, 0); */
-          /*   // ENTER key up */
-          /*   keybd_event(VK_RETURN, 0x9C, KEYEVENTF_KEYUP, 0); */
-          /* } */
-
           if( bCtrlF ){
             // Append Space
             SendMessage(hWndEdit, EM_REPLACESEL, 0, (LPARAM)TEXT(" "));
           }
+          if( p->vkCode == VK_RETURN || !bCtrlF && p->vkCode == VK_SPACE ){
+            // au3 script first
+            ShellRet = RunCmd(".au3");
+            // then with out au3
+            if (ShellRet <= (HINSTANCE) 32) {
+              ShellRet = RunCmd("");
+            }
+            SetWindowText(hWndEdit, "");
+          }
 
-          if( ShellRet> (HINSTANCE) 32 && // RunCmd succeed
-              ( p->vkCode == VK_RETURN ||
-                p->vkCode == VK_SPACE)
+          if( (( p->vkCode == VK_RETURN ||
+                 p->vkCode == VK_SPACE) &&
+               ShellRet > (HINSTANCE) 32)
               || p->vkCode == VK_ESCAPE || bCtrlG
-              ){
+              ) {
             HideCmd();
             bCmdKey = TRUE;
           }
