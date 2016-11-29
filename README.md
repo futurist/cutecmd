@@ -8,7 +8,7 @@ Project target:
 
  - **Script First**, run [AutoIt](https://www.autoitscript.com/site/autoit/) script first, then fallback to normal command
 
- - Launch App, or switch to it if opened ( see [shortcuts][] )
+ - Launch App, or switch to it if opened ( see [shortcuts](shortcuts) )
 
  - Tiny(now it's 8K), Lowest memory used
 

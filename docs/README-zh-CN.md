@@ -7,7 +7,7 @@
 项目目标：
 
  - **脚本优先**，若找到[AutoIt](https://www.autoitscript.com/site/autoit/)脚本，优先运行，否则运行普通命令行
- - 运行程序，或切换至
+ - 运行程序，或切换至 ( 参见 [shortcuts](shortcuts) )
  - 小巧(目前是8K)，低内存占用
 
 ![cutecmd snapshot](../screenshot.gif)
