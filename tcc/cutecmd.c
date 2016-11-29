@@ -117,8 +117,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   winLeftPos = (GetSystemMetrics(SM_CXVIRTUALSCREEN) - winWidth) * winPosRatio;  // left pos always in ratio
   winTopPos = (GetSystemMetrics(SM_CYVIRTUALSCREEN) - winHeight) * 0.5;  // Init top is in center
 
-  LPTSTR windowClass = TEXT("KeyHook");
-  LPTSTR windowTitle = TEXT("KeyHook Window");
+  LPTSTR windowClass = TEXT("CuteCmd");
+  LPTSTR windowTitle = TEXT("CuteCmd Window");
   WNDCLASSEX wcex;
 
   wcex.cbClsExtra = 0;
@@ -161,7 +161,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
   // Keep only one instance using mutex
   HANDLE m_hMutex;
-  m_hMutex  =  CreateMutex(NULL, TRUE,  "KeyHookProg" );
+  m_hMutex  =  CreateMutex(NULL, TRUE,  "CuteCmdProg" );
 
   if ((m_hMutex  !=  NULL)  &&  (GetLastError()  ==  ERROR_ALREADY_EXISTS))
     {

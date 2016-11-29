@@ -2,15 +2,15 @@
 
 Command runner for programmers in windows, like Alfred/QuickSilver in MacOS.
 
-Show a **Run** dialog alike, but more quickly, time is life :).
+Show a **Run** dialog alike, but more quickly and **Script First**.
 
 Project target:
 
- - Tiny(now it's 7K), Lowest memory used
+ - **Script First**, run [AutoIt](https://www.autoitscript.com/site/autoit/) script first, then fallback to normal command
 
- - Launch App, or switch to it if opened
+ - Launch App, or switch to it if opened ( see [shortcuts][] )
 
- - With AutoIt, it can have unlimited extention
+ - Tiny(now it's 8K), Lowest memory used
 
 ![CuteCmd snapshot](screenshot.gif)
 
@@ -19,18 +19,16 @@ Project target:
 
 1. Install [AutoIt](https://www.autoitscript.com/site/autoit/downloads/), using default options.
 
-2. Download the repo, copy `shortcuts/open.au3` into `C:\Windows`
+2. Copy **shortcuts** folder into any disk (D:), e.g.: `D:\shortcuts\`
 
-3. Copy **shortcuts** folder into any disk, e.g.: `D:\shortcuts\`
-
-4. Add `;D:\shortcuts\` to end of your **PATH** environment variable
+3. Add `;D:\shortcuts\` to end of your **PATH** environment variable
 
 Finished, ready to use, see below.
 
 
 ## Usage
 
-Launch **keyhook_x86.exe**(for 32bit windows) or **keyhook_x64.exe**(for 64bit windows). You can also add it to your Startup.
+Launch **cutecmd_x86.exe**(for 32bit windows) or **cutecmd_x64.exe**(for 64bit windows), **Windows 7+ need Administrator Privilege**.
 
 **Double Click** your **Control Key** to show the input window.
 
@@ -56,7 +54,7 @@ Example: `C:\WINDOWS\open.au3 "chrome.exe" title "Google Chrome"`
 
 ## Build
 
-For `keyhook`, using [TCC](http://bellard.org/tcc/) to build, keep it small.
+For `cutecmd`, using [TCC](http://bellard.org/tcc/) to build, keep it small.
 
 Import the API definitions in `shell32.dll` as below:
 
@@ -65,7 +63,7 @@ Import the API definitions in `shell32.dll` as below:
 
 Complie:
 
-    tcc keyhook.c -lshell32
+    tcc cutecmd.c -lshell32
 
 ## Document translate
 

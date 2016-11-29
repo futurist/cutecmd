@@ -2,13 +2,13 @@
 
 程序员命令启动器，与MacOS下的 Alfred / QuickSilver 类似。
 
-显示一个类似于**运行**命令的对话框，但更快速。时间就是生命 :)。
+显示一个类似于**运行**命令的对话框，但更快速，且**脚本优先**
 
 项目目标：
 
- - 小巧(目前是7K)，低内存占用
+ - **脚本优先**，若找到[AutoIt](https://www.autoitscript.com/site/autoit/)脚本，优先运行，否则运行普通命令行
  - 运行程序，或切换至
- - 配合AutoIt，可以无限扩展
+ - 小巧(目前是8K)，低内存占用
 
 ![cutecmd snapshot](../screenshot.gif)
 
@@ -17,17 +17,15 @@
 
 1. 下载 AutoIt [官方](https://www.autoitscript.com/site/autoit/downloads/) / [太平洋下载](http://dl.pconline.com.cn/download/1057.html), 默认选项安装.
 
-2. 下载本仓库, 拷贝 `shortcuts/open.au3` 至 `C:\Windows`
+2. 拷贝 **shortcuts** 目录到任意盘(D:), 如: `D:\shortcuts\`
 
-3. 拷贝 **shortcuts** 目录到任意盘, 如: `D:\shortcuts\`
-
-4. 添加 `;D:\shortcuts\` 至 **PATH** 环境变量的结尾
+3. 添加 `;D:\shortcuts\` 至 **PATH** 环境变量的结尾
 
 完成，可以使用了。使用方法如下
 
 ## 使用
 
-运行 **keyhook_x86.exe**(32位Windows) or **keyhook_x64.exe**(64位Windows). 你可以添加到自启动
+运行 **cutecmd_x86.exe**(32位Windows) or **cutecmd_x64.exe**(64位Windows), **Windows 7+ 需管理员权限**
 
 **双击** **Ctrl键** 会打开一个窗口
 
@@ -53,7 +51,7 @@
 
 ## 编译
 
-要编辑`keyhook`, 使用 [TCC](http://bellard.org/tcc/) 进行，目的是要小。
+要编辑`cutecmd`, 使用 [TCC](http://bellard.org/tcc/) 进行，目的是要小。
 
 导入 `shell32.dll` 中的API定义，如下
 
@@ -62,7 +60,7 @@
 
 编译:
 
-    tcc keyhook.c -lshell32
+    tcc cutecmd.c -lshell32
 
 
 
