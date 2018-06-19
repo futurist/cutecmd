@@ -196,6 +196,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   switch (msg)
     {
+    case WM_KILLFOCUS:
+      ShowCmd();
+      break;
     case WM_ACTIVATE:
     case WM_ACTIVATEAPP:
       switch(wParam)
