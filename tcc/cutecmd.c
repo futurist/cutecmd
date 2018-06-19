@@ -1,11 +1,12 @@
 #include <windows.h>
-#include <stdio.h>
-/* #define _DEBUG */
+#include <limits.h>
+// #define _DEBUG
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 #ifdef _DEBUG
+#include <stdio.h>
 FILE* debugFile;
 #endif
 
@@ -15,7 +16,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int, WPARAM, LPARAM);
 void SetKeyboardHook(int, HOOKPROC, HINSTANCE, DWORD);
 
 
-HHOOK hhkKeyboard;
+HHOOK hhkKeyboard = NULL;
 LONG commandMode = 0;
 LONG prevTime = 0;
 LONG prevKey = 0;
@@ -226,7 +227,11 @@ void SetKeyboardHook(int idHook, HOOKPROC  lpfn, HINSTANCE hMod, DWORD dwThreadI
   hhkKeyboard = SetWindowsHookEx(idHook, lpfn, hMod, dwThreadId);
 }
 
-
+LONG getUpTime(){
+  // GetTickCount may be negative...
+  LONG upTime = GetTickCount();
+  return upTime<0 ? LONG_MAX + upTime : upTime;
+}
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
@@ -238,12 +243,20 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
   BOOL retVal;
   HINSTANCE ShellRet=0;
 
+  if (nCode < 0)  // do not process message 
+    return CallNextHookEx(hhkKeyboard, nCode, wParam, lParam); 
+
   if (nCode == HC_ACTION)
     {
       PKBDLLHOOKSTRUCT p = (PKBDLLHOOKSTRUCT)lParam;
 
       isDown = wParam==WM_KEYDOWN || wParam==WM_SYSKEYDOWN;
       isUp = wParam==WM_KEYUP || wParam==WM_SYSKEYUP;
+
+#ifdef _DEBUG
+      fprintf(debugFile, "%ld, %ld, %d, %d, %d\n", prevTime, getUpTime(), isDown, isUp, p->vkCode);
+      /* _trace( L"timeDiff is %d\n",  timeDiff ); */
+#endif
 
       if (isDown) {
 
@@ -299,16 +312,9 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
       //** key is ctrl+ctrl within 500 ms
       bControl = (p->vkCode == VK_LCONTROL);
       if( bControl ) {
-
         if(isUp) {
-
-#ifdef _DEBUG
-          fprintf(debugFile, "%ld, %ld\n", prevTime, GetTickCount());
-          /* _trace( L"timeDiff is %d\n",  timeDiff ); */
-#endif
-
-          timeDiff = GetTickCount() - prevTime;
-          prevTime = GetTickCount();
+          timeDiff = getUpTime() - prevTime;
+          prevTime = getUpTime();
           bKeyHooked = timeDiff<500;
         }
       } else {
@@ -317,7 +323,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
       }
     }
 
-  retVal = ( (bKeyHooked && !bControl || bCmdKey) ? 1 : CallNextHookEx(NULL, nCode, wParam, lParam));
+  retVal = ( (bKeyHooked && !bControl || bCmdKey) ? 1 : CallNextHookEx(hhkKeyboard, nCode, wParam, lParam));
   if(bCmdKey) bCmdKey = FALSE;
 
   if(bKeyHooked){
