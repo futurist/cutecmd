@@ -19,6 +19,7 @@ void SetKeyboardHook(int, HOOKPROC, HINSTANCE, DWORD);
 HHOOK hhkKeyboard = NULL;
 LONG commandMode = 0;
 LONG prevTime = 0;
+LONG lastClickTime = 0;
 LONG prevKey = 0;
 LONG timeDiff = 9999;
 BOOL bCtrlG = FALSE;
@@ -62,6 +63,12 @@ char *TrimWhiteSpace(char *str)
 HFONT hfReg;
 
 void ClickOnWindow(){
+  LONG diff = getUpTime() - lastClickTime;
+  if(diff < 200) return;
+  lastClickTime = getUpTime();
+  SetForegroundWindow(hWnd);
+  SetActiveWindow(hWnd);
+  SetFocus(hWnd);
   POINT p;
   GetCursorPos(&p);
   int screenX = GetSystemMetrics( SM_CXVIRTUALSCREEN );
@@ -72,10 +79,14 @@ void ClickOnWindow(){
   mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);  // relative pos
   mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);  // relative pos
   SetCursorPos(p.x, p.y);
+  SetFocus(hWndEdit);
 }
 
 void ShowCmd(){
   ShowWindow(hWnd, SW_SHOW);
+  SetForegroundWindow(hWnd);
+  SetActiveWindow(hWnd);
+  SetFocus(hWnd);
   SetFocus(hWndEdit);
 }
 
@@ -196,15 +207,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   switch (msg)
     {
-    case WM_KILLFOCUS:
-      ShowCmd();
-      break;
     case WM_ACTIVATE:
     case WM_ACTIVATEAPP:
       switch(wParam)
         {
         case 0:  //FALSE or WM_INACTIVE
-          HideCmd();
+          //HideCmd();
           break;
         case 1:  //TRUE or WM_ACTIVE or WM_CLICKACTIVE
         case 2:
@@ -219,6 +227,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 #endif
       PostQuitMessage(0);
     default:
+      if(commandMode && GetForegroundWindow()!=hWnd) ClickOnWindow();
       return DefWindowProc(hWnd, msg, wParam, lParam);
     }
   return FALSE;
@@ -331,7 +340,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
   if(bKeyHooked){
     ShowCmd();
-    ClickOnWindow();
+    //ClickOnWindow();
     commandMode = 1;
   }
 
