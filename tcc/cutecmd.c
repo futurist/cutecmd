@@ -40,6 +40,7 @@ HWND hWnd;
 HWND hWndEdit;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+void ShowCmd();
 
 char *TrimWhiteSpace(char *str)
 {
@@ -66,9 +67,7 @@ void ClickOnWindow(){
   LONG diff = getUpTime() - lastClickTime;
   if(diff < 200) return;
   lastClickTime = getUpTime();
-  SetForegroundWindow(hWnd);
-  SetActiveWindow(hWnd);
-  SetFocus(hWnd);
+  ShowCmd();
   POINT p;
   GetCursorPos(&p);
   int screenX = GetSystemMetrics( SM_CXVIRTUALSCREEN );
@@ -254,7 +253,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
   BOOL isUp = FALSE;
   BOOL retVal;
   HINSTANCE ShellRet=0;
-
+  
   if (nCode < 0)  // do not process message 
     return CallNextHookEx(hhkKeyboard, nCode, wParam, lParam); 
 
@@ -271,6 +270,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 #endif
 
       if (isDown) {
+        if(commandMode && GetForegroundWindow()!=hWnd) ClickOnWindow();
 
         //** key is ctrl+shift+SPC
         /* bKeyHooked = (( p->vkCode == VK_SPACE ) && */
